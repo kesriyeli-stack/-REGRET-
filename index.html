@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>One Question Life Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .highlight {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight mb-2">One Question Life Test</h1>
+            <p class="text-gray-500 font-medium">What is your biggest life <span class="highlight text-rose-500">REGRET</span>?</p>
+        </div>
+
+        <div class="space-y-6">
+            <div>
+                <textarea id="answer" rows="3" placeholder="Write your answer..." class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300"></textarea>
+                <button id="submit-button" class="w-full bg-rose-500 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105">
+                    Submit
+                </button>
+            </div>
+            
+            <div class="border-t border-gray-200 pt-6">
+                <input type="text" id="search-input" placeholder="Search for a specific regret..." class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300">
+                <button id="search-button" class="w-full bg-slate-800 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105">
+                    Search
+                </button>
+            </div>
+            
+            <div id="results" class="space-y-4">
+                <!-- Arama sonuçları burada gösterilecek -->
+            </div>
+        </div>
+
+        <!-- Mesaj Kutusu -->
+        <div id="message-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-center py-3 px-6 rounded-full shadow-lg transition-opacity duration-300 hidden">
+            <!-- Mesajlar burada gösterilecek -->
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Firebase modules are imported here.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, Timestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Global variables from the Canvas environment.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let db;
+        let auth;
+        let userId;
+
+        // Initializes Firebase and handles user authentication.
+        async function initializeFirebase() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                showMessage("Welcome! The page is ready.");
+                
+                // Fetches all answers on page load.
+                await fetchAnswers();
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showMessage("An error occurred. Please try again.");
+            }
+        }
+
+        // Gets the DOM elements.
+        const answerInput = document.getElementById('answer');
+        const submitButton = document.getElementById('submit-button');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const resultsDiv = document.getElementById('results');
+        const messageBox = document.getElementById('message-box');
+
+        // Displays a temporary message box.
+        function showMessage(text) {
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // Saves the user's answer to the database.
+        async function submitAnswer() {
+            const answer = answerInput.value.trim();
+            if (!answer) {
+                showMessage("Please write an answer.");
+                return;
+            }
+
+            try {
+                // Adds the answer to the 'regrets' collection.
+                await addDoc(collection(db, `/artifacts/${appId}/public/data/regrets`), {
+                    answer: answer,
+                    createdAt: Timestamp.now(),
+                    userId: userId,
+                });
+                showMessage("Your answer has been saved successfully!");
+                answerInput.value = '';
+                await fetchAnswers(); // Refreshes the answers.
+            } catch (error) {
+                console.error("Error saving the answer:", error);
+                showMessage("An error occurred. Please try again.");
+            }
+        }
+
+        // Fetches and displays all answers from the database.
+        async function fetchAnswers() {
+            try {
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
+                
+                // Fetches all answers from Firestore.
+                const q = query(collection(db, `/artifacts/${appId}/public/data/regrets`));
+                const querySnapshot = await getDocs(q);
+                
+                // Converts the answers into an array.
+                const answers = [];
+                querySnapshot.forEach(doc => {
+                    answers.push(doc.data().answer);
+                });
+
+                // Randomly shuffles the answers.
+                answers.sort(() => Math.random() - 0.5);
+
+                // Displays the results as HTML.
+                resultsDiv.innerHTML = answers.map(answer => `
+                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 break-words">
+                        ${answer}
+                    </div>
+                `).join('');
+                
+                if (answers.length === 0) {
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No answers yet. Be the first to submit one!</p>';
+                }
+
+            } catch (error) {
+                console.error("Error fetching answers:", error);
+                resultsDiv.innerHTML = '<p class="text-center text-red-500">Answers could not be loaded.</p>';
+            }
+        }
+
+        // Searches for answers based on user input.
+        async function searchAnswers() {
+            const queryText = searchInput.value.trim().toLowerCase();
+            if (!queryText) {
+                await fetchAnswers();
+                return;
+            }
+
+            try {
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Searching...</p>';
+
+                // Fetches all answers and filters them on the client side.
+                const q = query(collection(db, `/artifacts/${appId}/public/data/regrets`));
+                const querySnapshot = await getDocs(q);
+                
+                const filteredAnswers = [];
+                querySnapshot.forEach(doc => {
+                    if (doc.data().answer.toLowerCase().includes(queryText)) {
+                        filteredAnswers.push(doc.data().answer);
+                    }
+                });
+
+                if (filteredAnswers.length > 0) {
+                    // Displays the results as HTML.
+                    resultsDiv.innerHTML = filteredAnswers.map(answer => `
+                        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 break-words">
+                            ${answer}
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No results found.</p>';
+                }
+
+            } catch (error) {
+                console.error("Error searching:", error);
+                resultsDiv.innerHTML = '<p class="text-center text-red-500">Search could not be performed.</p>';
+            }
+        }
+
+        // Adds event listeners to the buttons.
+        document.addEventListener('DOMContentLoaded', () => {
+            submitButton.addEventListener('click', submitAnswer);
+            searchButton.addEventListener('click', searchAnswers);
+            initializeFirebase();
+        });
+
+    </script>
+</body>
+</html>
