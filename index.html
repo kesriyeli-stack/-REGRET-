@@ -38,13 +38,13 @@
             </div>
             
             <div id="results" class="space-y-4">
-                <!-- Arama sonuçları burada gösterilecek -->
+                <!-- Search results will be displayed here -->
             </div>
         </div>
 
-        <!-- Mesaj Kutusu -->
+        <!-- Message Box -->
         <div id="message-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-center py-3 px-6 rounded-full shadow-lg transition-opacity duration-300 hidden">
-            <!-- Mesajlar burada gösterilecek -->
+            <!-- Messages will be displayed here -->
         </div>
 
     </div>
@@ -52,59 +52,50 @@
     <script type="module">
         // Firebase modules are imported here.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-     // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCg8nIWlfoIpCSWqDKJPP8fDJ9DSApUjms",
-  authDomain: "regret-9990c.firebaseapp.com",
-  projectId: "regret-9990c",
-  storageBucket: "regret-9990c.firebasestorage.app",
-  messagingSenderId: "770003057133",
-  appId: "1:770003057133:web:fb62ca0286ce88eb950fe4",
-  measurementId: "G-XK0YMBRWSW"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);  
-     // PASTE YOUR FIREBASE CONFIGURATION HERE
-        // YOUR FIREBASE CONFIGURATION OBJECT SHOULD BE HERE
-        const firebaseConfig = {
-          apiKey: "YOUR_API_KEY",
-          authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-          projectId: "YOUR_PROJECT_ID",
-          // ... and other config properties
-        };
-        
-        const appId = "YOUR_APP_ID"; // Use your actual App ID
+        // Bu değişkenler Canvas ortamı tarafından otomatik olarak sağlanır ve değiştirilmemelidir.
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         
         let db;
         let auth;
+        let userId;
 
         // Initializes Firebase and handles user authentication.
         async function initializeFirebase() {
             try {
+                if (!firebaseConfig) {
+                    throw new Error("Firebase configuration not found. Please ensure the project is correctly set up in the Canvas environment.");
+                }
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                await signInAnonymously(auth); // Sign in anonymously
+                console.log("Firebase initialized. Attempting authentication...");
+                
+                if (initialAuthToken) {
+                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                    userId = userCredential.user.uid;
+                    console.log("Signed in with custom token. User ID:", userId);
+                } else {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                    console.log("Signed in anonymously. User ID:", userId);
+                }
+                
                 showMessage("Welcome! The page is ready.");
                 
-                // Fetches all answers on page load.
                 await fetchAnswers();
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                showMessage("An error occurred. Please try again.");
+                if (error.code === 'auth/configuration-not-found') {
+                     showMessage("Firebase configuration error. Please check your project setup.");
+                } else {
+                     showMessage("An error occurred during startup. Please check the console for details.");
+                }
             }
         }
 
@@ -122,7 +113,7 @@ const analytics = getAnalytics(app);
             messageBox.style.display = 'block';
             setTimeout(() => {
                 messageBox.style.display = 'none';
-            }, 3000);
+            }, 5000); // Wait for 5 seconds
         }
 
         // Saves the user's answer to the database.
@@ -132,32 +123,48 @@ const analytics = getAnalytics(app);
                 showMessage("Please write an answer.");
                 return;
             }
+            if (!db) {
+                showMessage("Firebase is not initialized. Please try again.");
+                return;
+            }
+            
+            // SECURITY RULES NOTE: The Firestore rules must be configured to allow public write access.
+            // Example Rule: allow write: if request.auth != null;
 
             try {
                 // Adds the answer to the 'regrets' collection.
-                const path = `/artifacts/${appId}/public/data/regrets`;
-                console.log(`Submitting to Firestore path: ${path}`);
+                const path = `artifacts/${appId}/public/data/regrets`;
+                console.log(`Attempting to submit to Firestore path: ${path}`);
                 
                 await addDoc(collection(db, path), {
                     answer: answer,
                     createdAt: Timestamp.now(),
                 });
                 showMessage("Your answer has been saved successfully!");
-                answerInput.value = '';
+                answerInput.value = ''; // Clears the input field after successful submission.
                 await fetchAnswers(); // Refreshes the answers.
             } catch (error) {
                 console.error("Error saving the answer:", error);
-                showMessage("An error occurred. Please try again.");
+                if (error.code === 'permission-denied') {
+                    showMessage("Error: You don't have permission to save. Please update your Firebase security rules.");
+                } else {
+                    showMessage("An unexpected error occurred. Please try again.");
+                }
             }
         }
 
         // Fetches and displays all answers from the database.
         async function fetchAnswers() {
             try {
+                if (!db) {
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Could not connect to Firebase.</p>';
+                    return;
+                }
+                
                 resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
                 
                 // Fetches all answers from Firestore.
-                const path = `/artifacts/${appId}/public/data/regrets`;
+                const path = `artifacts/${appId}/public/data/regrets`;
                 console.log(`Fetching from Firestore path: ${path}`);
                 
                 const q = query(collection(db, path));
@@ -185,7 +192,11 @@ const analytics = getAnalytics(app);
 
             } catch (error) {
                 console.error("Error fetching answers:", error);
-                resultsDiv.innerHTML = '<p class="text-center text-red-500">Answers could not be loaded.</p>';
+                if (error.code === 'permission-denied') {
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Error: Missing permissions. Check your Firebase rules.</p>';
+                } else {
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Answers could not be loaded.</p>';
+                }
             }
         }
 
@@ -196,10 +207,14 @@ const analytics = getAnalytics(app);
                 await fetchAnswers();
                 return;
             }
+            if (!db) {
+                showMessage("Firebase is not initialized. Please try again.");
+                return;
+            }
 
             try {
                 resultsDiv.innerHTML = '<p class="text-center text-gray-500">Searching...</p>';
-                const path = `/artifacts/${appId}/public/data/regrets`;
+                const path = `artifacts/${appId}/public/data/regrets`;
                 const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
                 
