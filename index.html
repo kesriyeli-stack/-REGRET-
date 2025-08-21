@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,37 +52,22 @@
     <script type="module">
         // Firebase modules are imported here.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, Timestamp, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Global variables from the Canvas environment.
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCg8nIWlfoIpCSWqDKJPP8fDJ9DSApUjms",
-  authDomain: "regret-9990c.firebaseapp.com",
-  projectId: "regret-9990c",
-  storageBucket: "regret-9990c.firebasestorage.app",
-  messagingSenderId: "770003057133",
-  appId: "1:770003057133:web:fb62ca0286ce88eb950fe4",
-  measurementId: "G-XK0YMBRWSW"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // PASTE YOUR FIREBASE CONFIGURATION HERE
+        // YOUR FIREBASE CONFIGURATION OBJECT SHOULD BE HERE
+        const firebaseConfig = {
+          apiKey: "YOUR_API_KEY",
+          authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+          projectId: "YOUR_PROJECT_ID",
+          // ... and other config properties
+        };
+        
+        const appId = "YOUR_APP_ID"; // Use your actual App ID
         
         let db;
         let auth;
-        let userId;
 
         // Initializes Firebase and handles user authentication.
         async function initializeFirebase() {
@@ -91,13 +76,7 @@ const analytics = getAnalytics(app);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
-                userId = auth.currentUser?.uid || crypto.randomUUID();
+                await signInAnonymously(auth); // Sign in anonymously
                 showMessage("Welcome! The page is ready.");
                 
                 // Fetches all answers on page load.
@@ -135,10 +114,12 @@ const analytics = getAnalytics(app);
 
             try {
                 // Adds the answer to the 'regrets' collection.
-                await addDoc(collection(db, `/artifacts/${appId}/public/data/regrets`), {
+                const path = `/artifacts/${appId}/public/data/regrets`;
+                console.log(`Submitting to Firestore path: ${path}`);
+                
+                await addDoc(collection(db, path), {
                     answer: answer,
                     createdAt: Timestamp.now(),
-                    userId: userId,
                 });
                 showMessage("Your answer has been saved successfully!");
                 answerInput.value = '';
@@ -155,7 +136,10 @@ const analytics = getAnalytics(app);
                 resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
                 
                 // Fetches all answers from Firestore.
-                const q = query(collection(db, `/artifacts/${appId}/public/data/regrets`));
+                const path = `/artifacts/${appId}/public/data/regrets`;
+                console.log(`Fetching from Firestore path: ${path}`);
+                
+                const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
                 
                 // Converts the answers into an array.
@@ -194,9 +178,8 @@ const analytics = getAnalytics(app);
 
             try {
                 resultsDiv.innerHTML = '<p class="text-center text-gray-500">Searching...</p>';
-
-                // Fetches all answers and filters them on the client side.
-                const q = query(collection(db, `/artifacts/${appId}/public/data/regrets`));
+                const path = `/artifacts/${appId}/public/data/regrets`;
+                const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
                 
                 const filteredAnswers = [];
@@ -207,7 +190,6 @@ const analytics = getAnalytics(app);
                 });
 
                 if (filteredAnswers.length > 0) {
-                    // Displays the results as HTML.
                     resultsDiv.innerHTML = filteredAnswers.map(answer => `
                         <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 break-words">
                             ${answer}
@@ -233,4 +215,3 @@ const analytics = getAnalytics(app);
     </script>
 </body>
 </html>
-
