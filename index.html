@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One Question Life Test</title>
+    <title>One-Question Life Test</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -18,13 +18,13 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
     <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
         <div class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight mb-2">One Question Life Test</h1>
-            <p class="text-gray-500 font-medium">What is your biggest life <span class="highlight text-rose-500">REGRET</span>?</p>
+            <h1 class="text-4xl font-extrabold text-slate-800 tracking-tight mb-2">One-Question Life Test</h1>
+            <p class="text-gray-500 font-medium">What is your biggest <span class="highlight text-rose-500">REGRET</span>?</p>
         </div>
 
         <div class="space-y-6">
             <div>
-                <textarea id="answer" rows="3" placeholder="Write your answer..." class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300"></textarea>
+                <textarea id="answer" rows="3" placeholder="Write your answer here..." class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300"></textarea>
                 <button id="submit-button" disabled class="w-full bg-rose-500 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed">
                     Loading...
                 </button>
@@ -33,7 +33,7 @@
             <div class="border-t border-gray-200 pt-6">
                 <input type="text" id="search-input" placeholder="Search for a specific regret..." class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300">
                 <button id="search-button" disabled class="w-full bg-slate-800 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    Loading...
+                    Search
                 </button>
             </div>
             
@@ -50,10 +50,10 @@
     </div>
 
     <script type="module">
-        // Firebase modules are imported here.
+        // Imports Firebase modules.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, Timestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // These variables are automatically provided by the Canvas environment.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -76,7 +76,7 @@
         async function initializeFirebase() {
             try {
                 if (!firebaseConfig) {
-                    throw new Error("Firebase configuration not found. Please ensure the project is correctly set up in the Canvas environment.");
+                    throw new Error("Firebase configuration error. Please make sure the project is set up correctly.");
                 }
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -94,22 +94,26 @@
                     console.log("Signed in anonymously. User ID:", userId);
                 }
                 
-                showMessage("Welcome! The page is ready.");
+                showMessage("Welcome! Page is ready.");
                 submitButton.disabled = false;
                 submitButton.textContent = 'Submit';
                 searchButton.disabled = false;
                 searchButton.textContent = 'Search';
                 
+                // Fetch all answers on initial load.
                 await fetchAnswers();
             } catch (error) {
-                console.error("Error initializing Firebase:", error);
+                console.error("Firebase initialization error:", error);
                 if (error.code === 'permission-denied' || error.message.includes('permission')) {
-                    showMessage("Error: You don't have permission to connect. Please check your Firebase rules.");
-                } else if (error.code === 'auth/configuration-not-found') {
-                     showMessage("Firebase configuration error. Please ensure you have correctly set up the Firebase project.");
+                    showMessage("Error: You do not have permission to connect. Please check your Firebase rules.");
+                } else if (error.message.includes('Firebase configuration not found')) {
+                    showMessage("Firebase configuration error. Please ensure you have correctly set up the Firebase project in the Canvas environment.");
                 } else {
-                     showMessage("An error occurred during startup. Please check the console for details.");
+                    showMessage("An error occurred during startup. Please check the console.");
                 }
+                // Re-enable or change button text on error
+                submitButton.textContent = 'Error';
+                searchButton.textContent = 'Error';
             }
         }
 
@@ -119,7 +123,7 @@
             messageBox.style.display = 'block';
             setTimeout(() => {
                 messageBox.style.display = 'none';
-            }, 5000); // Wait for 5 seconds
+            }, 5000); // Wait 5 seconds
         }
 
         // Saves the user's answer to the database.
@@ -130,25 +134,27 @@
                 return;
             }
             if (!db) {
-                showMessage("Firebase is not initialized. Please try again.");
+                showMessage("Firebase not initialized. Please try again.");
                 return;
             }
             
             try {
                 const path = `artifacts/${appId}/public/data/regrets`;
+                const regretsCollection = collection(db, path);
+
+                // No duplicate check. Allow multiple identical entries.
                 console.log(`Trying to submit to Firestore path: ${path}`);
                 
-                await addDoc(collection(db, path), {
+                await addDoc(regretsCollection, {
                     answer: answer,
                     createdAt: Timestamp.now(),
                 });
-                showMessage("Your answer has been saved successfully!");
+                showMessage("Your answer has been successfully saved!");
                 answerInput.value = '';
-                await fetchAnswers();
             } catch (error) {
-                console.error("Error saving the answer:", error);
+                console.error("An error occurred while saving the answer:", error);
                 if (error.code === 'permission-denied') {
-                    showMessage("Error: You don't have permission to save. Please update your Firebase security rules.");
+                    showMessage("Error: You do not have permission to save. Please update your Firebase security rules.");
                 } else {
                     showMessage("An unexpected error occurred. Please try again.");
                 }
@@ -163,7 +169,7 @@
                     return;
                 }
                 
-                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Answers are loading...</p>';
                 
                 const path = `artifacts/${appId}/public/data/regrets`;
                 console.log(`Fetching from Firestore path: ${path}`);
@@ -185,15 +191,15 @@
                 `).join('');
                 
                 if (answers.length === 0) {
-                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No answers yet. Be the first to submit one!</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No answers yet. Be the first to answer!</p>';
                 }
 
             } catch (error) {
-                console.error("Error fetching answers:", error);
+                console.error("An error occurred while fetching answers:", error);
                 if (error.code === 'permission-denied') {
-                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Error: Missing permissions. Check your Firebase rules.</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Error: Missing permissions. Please check your Firebase rules.</p>';
                 } else {
-                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Answers could not be loaded.</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Could not load answers.</p>';
                 }
             }
         }
@@ -202,11 +208,12 @@
         async function searchAnswers() {
             const queryText = searchInput.value.trim().toLowerCase();
             if (!queryText) {
+                // If search input is empty, fetch all answers.
                 await fetchAnswers();
                 return;
             }
             if (!db) {
-                showMessage("Firebase is not initialized. Please try again.");
+                showMessage("Firebase not initialized. Please try again.");
                 return;
             }
 
@@ -218,12 +225,13 @@
                 
                 const filteredAnswers = [];
                 querySnapshot.forEach(doc => {
-                    if (doc.data().answer.toLowerCase().includes(queryText)) {
+                    if (doc.data().answer.toLowerCase().includes(queryText.toLowerCase())) {
                         filteredAnswers.push(doc.data().answer);
                     }
                 });
 
                 if (filteredAnswers.length > 0) {
+                    filteredAnswers.sort(() => Math.random() - 0.5); // Randomize search results
                     resultsDiv.innerHTML = filteredAnswers.map(answer => `
                         <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 break-words">
                             ${answer}
@@ -234,8 +242,8 @@
                 }
 
             } catch (error) {
-                console.error("Error searching:", error);
-                resultsDiv.innerHTML = '<p class="text-center text-red-500">Search could not be performed.</p>';
+                console.error("An error occurred while searching:", error);
+                resultsDiv.innerHTML = '<p class="text-center text-red-500">Could not perform search.</p>';
             }
         }
 
