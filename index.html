@@ -38,24 +38,24 @@
             </div>
             
             <div id="results" class="space-y-4">
-                <!-- Search results will be displayed here -->
+                <!-- Arama sonuçları burada gösterilecek -->
             </div>
         </div>
 
-        <!-- Message Box -->
+        <!-- Mesaj Kutusu -->
         <div id="message-box" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white text-center py-3 px-6 rounded-full shadow-lg transition-opacity duration-300 hidden">
-            <!-- Messages will be displayed here -->
+            <!-- Mesajlar burada gösterilecek -->
         </div>
 
     </div>
 
     <script type="module">
-        // Firebase modules are imported here.
+        // Firebase modüllerini içe aktarır.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // These variables are automatically provided by the Canvas environment.
+        // Bu değişkenler Canvas ortamı tarafından otomatik olarak sağlanır.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -94,11 +94,11 @@
                     console.log("Signed in anonymously. User ID:", userId);
                 }
                 
-                showMessage("Welcome! The page is ready.");
+                showMessage("Hoş geldiniz! Sayfa hazır.");
                 submitButton.disabled = false;
-                submitButton.textContent = 'Submit';
+                submitButton.textContent = 'Gönder';
                 searchButton.disabled = false;
-                searchButton.textContent = 'Search';
+                searchButton.textContent = 'Ara';
                 
                 await fetchAnswers();
             } catch (error) {
@@ -106,9 +106,9 @@
                 if (error.code === 'permission-denied' || error.message.includes('permission')) {
                     showMessage("Error: You don't have permission to connect. Please check your Firebase rules.");
                 } else if (error.code === 'auth/configuration-not-found') {
-                     showMessage("Firebase configuration error. Please ensure you have correctly set up the Firebase project.");
+                     showMessage("Firebase yapılandırma hatası. Lütfen projeniz için Firebase projesini doğru bir şekilde ayarladığınızdan emin olun.");
                 } else {
-                     showMessage("An error occurred during startup. Please check the console for details.");
+                     showMessage("Başlangıç sırasında bir hata oluştu. Lütfen konsolu kontrol edin.");
                 }
             }
         }
@@ -119,18 +119,18 @@
             messageBox.style.display = 'block';
             setTimeout(() => {
                 messageBox.style.display = 'none';
-            }, 5000); // Wait for 5 seconds
+            }, 5000); // 5 saniye bekle
         }
 
         // Saves the user's answer to the database.
         async function submitAnswer() {
             const answer = answerInput.value.trim();
             if (!answer) {
-                showMessage("Please write an answer.");
+                showMessage("Lütfen bir cevap yazın.");
                 return;
             }
             if (!db) {
-                showMessage("Firebase is not initialized. Please try again.");
+                showMessage("Firebase başlatılmadı. Lütfen tekrar deneyin.");
                 return;
             }
             
@@ -142,15 +142,15 @@
                     answer: answer,
                     createdAt: Timestamp.now(),
                 });
-                showMessage("Your answer has been saved successfully!");
+                showMessage("Cevabınız başarıyla kaydedildi!");
                 answerInput.value = '';
                 await fetchAnswers();
             } catch (error) {
-                console.error("Error saving the answer:", error);
+                console.error("Cevap kaydedilirken hata oluştu:", error);
                 if (error.code === 'permission-denied') {
-                    showMessage("Error: You don't have permission to save. Please update your Firebase security rules.");
+                    showMessage("Hata: Kaydetme izniniz yok. Lütfen Firebase güvenlik kurallarınızı güncelleyin.");
                 } else {
-                    showMessage("An unexpected error occurred. Please try again.");
+                    showMessage("Beklenmedik bir hata oluştu. Lütfen tekrar deneyin.");
                 }
             }
         }
@@ -163,7 +163,7 @@
                     return;
                 }
                 
-                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Cevaplar yükleniyor...</p>';
                 
                 const path = `artifacts/${appId}/public/data/regrets`;
                 console.log(`Fetching from Firestore path: ${path}`);
@@ -185,15 +185,15 @@
                 `).join('');
                 
                 if (answers.length === 0) {
-                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No answers yet. Be the first to submit one!</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">Henüz cevap yok. İlk cevabı veren siz olun!</p>';
                 }
 
             } catch (error) {
-                console.error("Error fetching answers:", error);
+                console.error("Cevaplar alınırken hata oluştu:", error);
                 if (error.code === 'permission-denied') {
-                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Error: Missing permissions. Check your Firebase rules.</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Hata: Eksik izinler. Firebase kurallarınızı kontrol edin.</p>';
                 } else {
-                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Answers could not be loaded.</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-red-500">Cevaplar yüklenemedi.</p>';
                 }
             }
         }
@@ -206,12 +206,12 @@
                 return;
             }
             if (!db) {
-                showMessage("Firebase is not initialized. Please try again.");
+                showMessage("Firebase başlatılmadı. Lütfen tekrar deneyin.");
                 return;
             }
 
             try {
-                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Searching...</p>';
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">Aranıyor...</p>';
                 const path = `artifacts/${appId}/public/data/regrets`;
                 const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
@@ -230,12 +230,12 @@
                         </div>
                     `).join('');
                 } else {
-                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">No results found.</p>';
+                    resultsDiv.innerHTML = '<p class="text-center text-gray-500">Hiç sonuç bulunamadı.</p>';
                 }
 
             } catch (error) {
-                console.error("Error searching:", error);
-                resultsDiv.innerHTML = '<p class="text-center text-red-500">Search could not be performed.</p>';
+                console.error("Arama yapılırken hata oluştu:", error);
+                resultsDiv.innerHTML = '<p class="text-center text-red-500">Arama gerçekleştirilemedi.</p>';
             }
         }
 
