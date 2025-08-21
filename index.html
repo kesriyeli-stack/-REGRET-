@@ -112,7 +112,9 @@
                     showMessage("An error occurred during startup. Please check the console.");
                 }
                 // Re-enable or change button text on error
+                submitButton.disabled = true;
                 submitButton.textContent = 'Error';
+                searchButton.disabled = true;
                 searchButton.textContent = 'Error';
             }
         }
