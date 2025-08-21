@@ -25,15 +25,15 @@
         <div class="space-y-6">
             <div>
                 <textarea id="answer" rows="3" placeholder="Write your answer..." class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300"></textarea>
-                <button id="submit-button" class="w-full bg-rose-500 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105">
-                    Submit
+                <button id="submit-button" disabled class="w-full bg-rose-500 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Loading...
                 </button>
             </div>
             
             <div class="border-t border-gray-200 pt-6">
                 <input type="text" id="search-input" placeholder="Search for a specific regret..." class="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl shadow-sm focus:ring-rose-500 focus:border-rose-500 transition-all duration-300">
-                <button id="search-button" class="w-full bg-slate-800 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105">
-                    Search
+                <button id="search-button" disabled class="w-full bg-slate-800 text-white font-bold py-3 mt-4 rounded-xl shadow-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Loading...
                 </button>
             </div>
             
@@ -55,7 +55,7 @@
         import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, Timestamp, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Bu değişkenler Canvas ortamı tarafından otomatik olarak sağlanır ve değiştirilmemelidir.
+        // These variables are automatically provided by the Canvas environment.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
@@ -63,6 +63,14 @@
         let db;
         let auth;
         let userId;
+
+        // Gets the DOM elements.
+        const answerInput = document.getElementById('answer');
+        const submitButton = document.getElementById('submit-button');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const resultsDiv = document.getElementById('results');
+        const messageBox = document.getElementById('message-box');
 
         // Initializes Firebase and handles user authentication.
         async function initializeFirebase() {
@@ -87,25 +95,23 @@
                 }
                 
                 showMessage("Welcome! The page is ready.");
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit';
+                searchButton.disabled = false;
+                searchButton.textContent = 'Search';
                 
                 await fetchAnswers();
             } catch (error) {
                 console.error("Error initializing Firebase:", error);
-                if (error.code === 'auth/configuration-not-found') {
-                     showMessage("Firebase configuration error. Please check your project setup.");
+                if (error.code === 'permission-denied' || error.message.includes('permission')) {
+                    showMessage("Error: You don't have permission to connect. Please check your Firebase rules.");
+                } else if (error.code === 'auth/configuration-not-found') {
+                     showMessage("Firebase configuration error. Please ensure you have correctly set up the Firebase project.");
                 } else {
                      showMessage("An error occurred during startup. Please check the console for details.");
                 }
             }
         }
-
-        // Gets the DOM elements.
-        const answerInput = document.getElementById('answer');
-        const submitButton = document.getElementById('submit-button');
-        const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
-        const resultsDiv = document.getElementById('results');
-        const messageBox = document.getElementById('message-box');
 
         // Displays a temporary message box.
         function showMessage(text) {
@@ -128,21 +134,17 @@
                 return;
             }
             
-            // SECURITY RULES NOTE: The Firestore rules must be configured to allow public write access.
-            // Example Rule: allow write: if request.auth != null;
-
             try {
-                // Adds the answer to the 'regrets' collection.
                 const path = `artifacts/${appId}/public/data/regrets`;
-                console.log(`Attempting to submit to Firestore path: ${path}`);
+                console.log(`Trying to submit to Firestore path: ${path}`);
                 
                 await addDoc(collection(db, path), {
                     answer: answer,
                     createdAt: Timestamp.now(),
                 });
                 showMessage("Your answer has been saved successfully!");
-                answerInput.value = ''; // Clears the input field after successful submission.
-                await fetchAnswers(); // Refreshes the answers.
+                answerInput.value = '';
+                await fetchAnswers();
             } catch (error) {
                 console.error("Error saving the answer:", error);
                 if (error.code === 'permission-denied') {
@@ -163,23 +165,19 @@
                 
                 resultsDiv.innerHTML = '<p class="text-center text-gray-500">Loading answers...</p>';
                 
-                // Fetches all answers from Firestore.
                 const path = `artifacts/${appId}/public/data/regrets`;
                 console.log(`Fetching from Firestore path: ${path}`);
                 
                 const q = query(collection(db, path));
                 const querySnapshot = await getDocs(q);
                 
-                // Converts the answers into an array.
                 const answers = [];
                 querySnapshot.forEach(doc => {
                     answers.push(doc.data().answer);
                 });
 
-                // Randomly shuffles the answers.
                 answers.sort(() => Math.random() - 0.5);
 
-                // Displays the results as HTML.
                 resultsDiv.innerHTML = answers.map(answer => `
                     <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-700 break-words">
                         ${answer}
