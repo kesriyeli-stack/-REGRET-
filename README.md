@@ -18,27 +18,5 @@ CSS3 (Tailwind CSS): The design and styling of the application.
 JavaScript (ES6): The logic and interactivity of the application.
 
 Firebase Firestore: The serverless database used to store and synchronize answers in real-time.
-
-Setup and Deployment
-Setting up the project is straightforward as it does not require a back-end server.
-
-Clone the Repository:
-
-git clone https://github.com/yourusername/your-project-name.git
-cd your-project-name
-
-Add the File:
-
-Replace the index.html file in your repository with the latest version of the code for this project. The final version includes the Firebase integration.
-
-This prevents the fetch errors you were encountering and allows the project to run directly in the browser.
-
-Deploy with GitHub Pages:
-
-On your GitHub repository, go to Settings > Pages.
-
-Under Source, select Deploy from a branch and choose main (or whichever branch you are using).
-
-Save your changes.
-
-GitHub will start to build and publish your site within a few minutes. You can find your site's URL on the Pages settings page.
+ 
+ 
